@@ -41,6 +41,7 @@ function loadStarterLayout() {
   board[3][3] = { type: "stone" };
   board[3][4] = { type: "stone" };
   board[1][6] = createMonster();
+  board[3][6] = createMonster();
   board[5][6] = createMonster();
 }
 
@@ -176,6 +177,12 @@ function startGame() {
     return;
   }
 
+  if (getMonsters().length !== 3) {
+    statusText.textContent = "请恰好放置三个怪物";
+    pulseElement(editorPanel);
+    return;
+  }
+
   initialState = cloneBoard(board);
   steps = 0;
   mode = "playing";
@@ -222,7 +229,7 @@ function movePlayer(directionName) {
     return;
   }
 
-  moveMonsters();
+  resolveMonsterFight();
 }
 
 function pushStoneLine(startRow, startCol, rowDelta, colDelta) {
@@ -248,122 +255,36 @@ function pushStoneLine(startRow, startCol, rowDelta, colDelta) {
   return true;
 }
 
-function moveMonsters() {
-  const player = getPlayer();
+function resolveMonsterFight() {
   const monsters = getMonsters();
-  if (!player || monsters.length === 0) return;
+  if (monsters.length !== 3 || !areAllMonstersConnected(monsters)) return;
 
-  const proposals = monsters.map((monster) => {
-    const candidates = getMonsterCandidates(monster, player);
-    const target = candidates[0] ?? { row: monster.row, col: monster.col };
-    return { monster, target };
-  });
-
-  const deadIds = findCollidingMonsters(proposals);
-
-  for (const monster of monsters) {
-    board[monster.row][monster.col] = null;
-  }
-
-  for (const proposal of proposals) {
-    if (deadIds.has(proposal.monster.id)) continue;
-    board[proposal.target.row][proposal.target.col] = {
-      type: "monster",
-      id: proposal.monster.id,
-    };
-  }
-
-  resolveAdjacentFights();
-  render();
-
-  if (isPlayerInDanger()) {
-    finishGame("failed", "被怪物逼近", "怪物进入了你的上下左右警戒范围。");
-  } else if (getMonsters().length === 0) {
-    finishGame("cleared", "怪物全灭", `你用 ${steps} 步让怪物互相厮杀殆尽。`);
-  }
+  for (const monster of monsters) board[monster.row][monster.col] = null;
+  finishGame("cleared", "三个怪物同时死亡", `你用 ${steps} 步完成了挑战。`);
 }
 
-function getMonsterCandidates(monster, player) {
-  const candidates = [];
-
-  for (const [name, [rowDelta, colDelta]] of Object.entries(DIRECTIONS)) {
-    const row = monster.row + rowDelta;
-    const col = monster.col + colDelta;
-    if (!isInside(row, col)) continue;
-    if (board[row][col]?.type === "stone") continue;
-
-    candidates.push({
-      row,
-      col,
-      direction: name,
-      distance: Math.abs(player.row - row) + Math.abs(player.col - col),
-    });
-  }
-
-  const directionPriority = ["up", "left", "down", "right"];
-  candidates.sort(
-    (a, b) =>
-      a.distance - b.distance ||
-      directionPriority.indexOf(a.direction) - directionPriority.indexOf(b.direction),
+function areAllMonstersConnected(monsters) {
+  const monsterCells = new Set(
+    monsters.map((monster) => positionKey(monster.row, monster.col)),
   );
-  return candidates;
-}
+  const visited = new Set();
+  const pending = [monsters[0]];
 
-function findCollidingMonsters(proposals) {
-  const deadIds = new Set();
-  const targetGroups = new Map();
+  while (pending.length > 0) {
+    const current = pending.pop();
+    const currentKey = positionKey(current.row, current.col);
+    if (visited.has(currentKey)) continue;
+    visited.add(currentKey);
 
-  for (const proposal of proposals) {
-    const key = positionKey(proposal.target.row, proposal.target.col);
-    if (!targetGroups.has(key)) targetGroups.set(key, []);
-    targetGroups.get(key).push(proposal);
-  }
-
-  for (const group of targetGroups.values()) {
-    if (group.length > 1) {
-      group.forEach((proposal) => deadIds.add(proposal.monster.id));
+    for (const [rowDelta, colDelta] of Object.values(DIRECTIONS)) {
+      const row = current.row + rowDelta;
+      const col = current.col + colDelta;
+      const key = positionKey(row, col);
+      if (monsterCells.has(key) && !visited.has(key)) pending.push({ row, col });
     }
   }
 
-  for (let first = 0; first < proposals.length; first += 1) {
-    for (let second = first + 1; second < proposals.length; second += 1) {
-      const a = proposals[first];
-      const b = proposals[second];
-      const swapped =
-        a.target.row === b.monster.row &&
-        a.target.col === b.monster.col &&
-        b.target.row === a.monster.row &&
-        b.target.col === a.monster.col;
-
-      if (swapped) {
-        deadIds.add(a.monster.id);
-        deadIds.add(b.monster.id);
-      }
-    }
-  }
-
-  return deadIds;
-}
-
-function resolveAdjacentFights() {
-  const monsters = getMonsters();
-  const deadIds = new Set();
-
-  for (let first = 0; first < monsters.length; first += 1) {
-    for (let second = first + 1; second < monsters.length; second += 1) {
-      const a = monsters[first];
-      const b = monsters[second];
-      const distance = Math.abs(a.row - b.row) + Math.abs(a.col - b.col);
-      if (distance === 1) {
-        deadIds.add(a.id);
-        deadIds.add(b.id);
-      }
-    }
-  }
-
-  for (const monster of monsters) {
-    if (deadIds.has(monster.id)) board[monster.row][monster.col] = null;
-  }
+  return visited.size === 3;
 }
 
 function isPlayerInDanger() {
