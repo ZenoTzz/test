@@ -233,6 +233,32 @@ h1 {
   right: 25%;
 }
 
+.piece.beamMonster {
+  display: grid;
+  width: 58%;
+  height: 58%;
+  border: 2px solid var(--monster);
+  border-radius: 50%;
+  color: var(--card);
+  background: var(--monster);
+  font-size: calc(var(--cell) * 0.34);
+  font-weight: 900;
+  line-height: 1;
+  place-items: center;
+}
+
+.piece.beamMonster.facing-right {
+  transform: rotate(90deg);
+}
+
+.piece.beamMonster.facing-down {
+  transform: rotate(180deg);
+}
+
+.piece.beamMonster.facing-left {
+  transform: rotate(270deg);
+}
+
 .cell.danger {
   background: #f9e6df;
 }
@@ -285,7 +311,7 @@ h1 {
 
 .tool-group {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
 }
 
@@ -332,6 +358,49 @@ h1 {
   transform: rotate(45deg);
   border-radius: 4px;
   background: var(--monster);
+}
+
+.beam-monster-piece {
+  display: grid;
+  border-radius: 50%;
+  color: white;
+  background: var(--monster);
+  font-size: 0.72rem;
+  font-weight: 900;
+  place-items: center;
+}
+
+.direction-picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+  gap: 6px;
+}
+
+.direction-picker[hidden] {
+  display: none;
+}
+
+.direction-picker span {
+  margin-right: 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.direction-option {
+  width: 34px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--card);
+  cursor: pointer;
+}
+
+.direction-option.active {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .erase-mark {
@@ -498,6 +567,10 @@ dialog .primary-button {
     min-height: 58px;
     font-size: 0.76rem;
     gap: 5px;
+  }
+
+  .tool-group {
+    grid-template-columns: repeat(5, 1fr);
   }
 
   .keyboard-hint {

@@ -13,6 +13,7 @@ const statusText = document.querySelector("#statusText");
 const stepCount = document.querySelector("#stepCount");
 const monsterCount = document.querySelector("#monsterCount");
 const editorPanel = document.querySelector("#editorPanel");
+const directionPicker = document.querySelector("#directionPicker");
 const startButton = document.querySelector("#startButton");
 const editButton = document.querySelector("#editButton");
 const resetButton = document.querySelector("#resetButton");
@@ -26,6 +27,7 @@ const helpDialog = document.querySelector("#helpDialog");
 
 let mode = "editing";
 let selectedTool = "player";
+let selectedFacing = "up";
 let steps = 0;
 let monsterSerial = 0;
 let initialState = null;
@@ -50,6 +52,11 @@ function createMonster() {
   return { type: "monster", id: monsterSerial };
 }
 
+function createBeamMonster(facing = selectedFacing) {
+  monsterSerial += 1;
+  return { type: "beamMonster", id: monsterSerial, facing };
+}
+
 function cloneBoard(source) {
   return source.map((row) => row.map((cell) => (cell ? { ...cell } : null)));
 }
@@ -71,7 +78,7 @@ function getMonsters() {
   const monsters = [];
   for (let row = 0; row < ROWS; row += 1) {
     for (let col = 0; col < COLS; col += 1) {
-      if (board[row][col]?.type === "monster") {
+      if (["monster", "beamMonster"].includes(board[row][col]?.type)) {
         monsters.push({ row, col, ...board[row][col] });
       }
     }
@@ -107,6 +114,10 @@ function render() {
       if (content) {
         const piece = document.createElement("span");
         piece.className = `piece ${content.type}`;
+        if (content.type === "beamMonster") {
+          piece.classList.add(`facing-${content.facing}`);
+          piece.textContent = "↑";
+        }
         piece.setAttribute("aria-hidden", "true");
         cellButton.append(piece);
       }
@@ -133,7 +144,9 @@ function render() {
 
 function describeCell(row, col, content) {
   const label = content
-    ? { player: "玩家", stone: "石头", monster: "怪物" }[content.type]
+    ? { player: "玩家", stone: "石头", monster: "普通怪物", beamMonster: "射线怪物" }[
+        content.type
+      ]
     : "空格";
   return `第 ${row + 1} 行第 ${col + 1} 列，${label}`;
 }
@@ -142,10 +155,21 @@ function getDangerCells() {
   const danger = new Set();
   for (const monster of getMonsters()) {
     danger.add(positionKey(monster.row, monster.col));
-    for (const [rowDelta, colDelta] of Object.values(DIRECTIONS)) {
-      const row = monster.row + rowDelta;
-      const col = monster.col + colDelta;
-      if (isInside(row, col)) danger.add(positionKey(row, col));
+    if (monster.type === "beamMonster") {
+      const [rowDelta, colDelta] = DIRECTIONS[monster.facing];
+      let row = monster.row + rowDelta;
+      let col = monster.col + colDelta;
+      while (isInside(row, col)) {
+        danger.add(positionKey(row, col));
+        row += rowDelta;
+        col += colDelta;
+      }
+    } else {
+      for (const [rowDelta, colDelta] of Object.values(DIRECTIONS)) {
+        const row = monster.row + rowDelta;
+        const col = monster.col + colDelta;
+        if (isInside(row, col)) danger.add(positionKey(row, col));
+      }
     }
   }
   return danger;
@@ -162,6 +186,8 @@ function placePiece(row, col) {
     board[row][col] = { type: "player" };
   } else if (selectedTool === "monster") {
     board[row][col] = createMonster();
+  } else if (selectedTool === "beamMonster") {
+    board[row][col] = createBeamMonster();
   } else {
     board[row][col] = { type: selectedTool };
   }
@@ -208,13 +234,13 @@ function movePlayer(directionName) {
   if (!isInside(targetRow, targetCol)) return;
 
   const target = board[targetRow][targetCol];
-  if (target?.type === "monster") {
+  if (isMonster(target)) {
     finishGame("failed", "撞上怪物", "你走进了怪物所在的格子。");
     return;
   }
 
-  if (target?.type === "stone") {
-    if (!pushStoneLine(targetRow, targetCol, rowDelta, colDelta)) return;
+  if (target && !isMonster(target)) {
+    if (!pushObjectLine(targetRow, targetCol, rowDelta, colDelta)) return;
   } else if (target) {
     return;
   }
@@ -232,11 +258,15 @@ function movePlayer(directionName) {
   resolveMonsterFight();
 }
 
-function pushStoneLine(startRow, startCol, rowDelta, colDelta) {
+function isMonster(piece) {
+  return piece && ["monster", "beamMonster"].includes(piece.type);
+}
+
+function pushObjectLine(startRow, startCol, rowDelta, colDelta) {
   let row = startRow;
   let col = startCol;
 
-  while (isInside(row, col) && board[row][col]?.type === "stone") {
+  while (isInside(row, col) && board[row][col] && !isMonster(board[row][col])) {
     row += rowDelta;
     col += colDelta;
   }
@@ -357,6 +387,17 @@ document.querySelectorAll(".tool").forEach((button) => {
   button.addEventListener("click", () => {
     selectedTool = button.dataset.tool;
     document.querySelectorAll(".tool").forEach((tool) => tool.classList.remove("active"));
+    button.classList.add("active");
+    directionPicker.hidden = selectedTool !== "beamMonster";
+  });
+});
+
+document.querySelectorAll(".direction-option").forEach((button) => {
+  button.addEventListener("click", () => {
+    selectedFacing = button.dataset.facing;
+    document
+      .querySelectorAll(".direction-option")
+      .forEach((option) => option.classList.remove("active"));
     button.classList.add("active");
   });
 });

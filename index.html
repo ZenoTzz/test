@@ -57,10 +57,21 @@
               <span class="mini-piece monster-piece"></span>
               怪物
             </button>
+            <button class="tool" data-tool="beamMonster" type="button">
+              <span class="mini-piece beam-monster-piece">↑</span>
+              射线怪
+            </button>
             <button class="tool" data-tool="erase" type="button">
               <span class="erase-mark">×</span>
               擦除
             </button>
+          </div>
+          <div id="directionPicker" class="direction-picker" hidden>
+            <span>射线方向</span>
+            <button class="direction-option active" data-facing="up" type="button">↑</button>
+            <button class="direction-option" data-facing="right" type="button">→</button>
+            <button class="direction-option" data-facing="down" type="button">↓</button>
+            <button class="direction-option" data-facing="left" type="button">←</button>
           </div>
           <p class="editor-hint">选择角色后点击格子放置。棋盘上只能有一个玩家。</p>
         </section>
@@ -88,9 +99,9 @@
       <p class="eyebrow">HOW TO PLAY</p>
       <h2>游戏规则</h2>
       <ol>
-        <li>你可以一次推动一整排相连的石头，但石头后方必须有空位。</li>
-        <li>怪物不会移动，棋盘开局必须恰好放置三个怪物。</li>
-        <li>玩家进入怪物所在格或其上下左右相邻格，立即失败。</li>
+        <li>你可以推动面前所有连续的非怪物物体，但最后必须有空位。</li>
+        <li>怪物不会移动且不可推动，棋盘开局必须恰好放置三个怪物。</li>
+        <li>普通怪攻击上下左右相邻格；射线怪攻击正前方直到棋盘边界。</li>
         <li>三个怪物组成上下左右连通的一组时，会同时厮杀并全部死亡，此时获胜。</li>
       </ol>
       <button id="understoodButton" class="primary-button" type="button">明白了</button>
